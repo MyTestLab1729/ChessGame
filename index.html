@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Peer Chess Game</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>♟️ Peer Chess</h1>
+    <div class="board" id="board"></div>
+
+    <div class="controls">
+      <button id="createBtn">Create Game</button>
+      <button id="joinBtn">Join Game</button>
+    </div>
+
+    <div class="signals">
+      <textarea id="yourSignal" placeholder="Your Signal (send to friend)"></textarea>
+      <textarea id="friendSignal" placeholder="Friend's Signal (paste here)"></textarea>
+      <button id="connectBtn">Connect</button>
+    </div>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
