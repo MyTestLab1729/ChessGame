@@ -2,27 +2,159 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Peer Chess Game</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2-Player Chess</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" />
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 2rem;
+    }
+    h1 {
+      margin-bottom: 1rem;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(8, 60px);
+      grid-template-rows: repeat(8, 60px);
+      border: 2px solid #444;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .square {
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      cursor: pointer;
+      position: relative;
+      font-weight: bold;
+      transition: background 0.2s ease-in-out;
+    }
+    .light { background-color: #f0d9b5; }
+    .dark { background-color: #b58863; }
+    .highlight {
+      outline: 2px solid #6ef1a1;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.4);
+    }
+    .move-indicator {
+      outline: 2px solid #8af5ff;
+      box-shadow: 0 0 10px #8af5ff;
+    }
+    .piece-img {
+      width: 48px;
+      height: 48px;
+      pointer-events: none;
+      filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));
+    }
+    #turnInfo {
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>♟️ Peer Chess</h1>
-    <div class="board" id="board"></div>
+  <h1>♟ 2-Player Chess (Same Device)</h1>
+  <div id="board"></div>
+  <div id="turnInfo">Turn: White</div>
 
-    <div class="controls">
-      <button id="createBtn">Create Game</button>
-      <button id="joinBtn">Join Game</button>
-    </div>
+  <script type="module">
+    import { Chess } from 'https://cdn.jsdelivr.net/npm/chess.js@1.0.0/+esm';
+    const game = new Chess();
+    const board = document.getElementById('board');
+    const turnInfo = document.getElementById('turnInfo');
 
-    <div class="signals">
-      <textarea id="yourSignal" placeholder="Your Signal (send to friend)"></textarea>
-      <textarea id="friendSignal" placeholder="Friend's Signal (paste here)"></textarea>
-      <button id="connectBtn">Connect</button>
-    </div>
-  </div>
+    let selected = null;
+    let legalMoves = [];
 
-  <script type="module" src="script.js"></script>
+    const pieceImages = {
+      w: {
+        p: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
+        r: 'https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg',
+        n: 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
+        b: 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
+        q: 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
+        k: 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg'
+      },
+      b: {
+        p: 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg',
+        r: 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg',
+        n: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg',
+        b: 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
+        q: 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
+        k: 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg'
+      }
+    };
+
+    function renderBoard() {
+      board.innerHTML = '';
+      const position = game.board();
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          const squareEl = document.createElement('div');
+          squareEl.className = 'square ' + ((x + y) % 2 === 0 ? 'light' : 'dark');
+          const square = `${String.fromCharCode(97 + x)}${8 - y}`;
+          squareEl.dataset.square = square;
+
+          const piece = position[y][x];
+          if (piece) {
+            const img = document.createElement('img');
+            img.src = pieceImages[piece.color][piece.type];
+            img.classList.add('piece-img');
+            squareEl.appendChild(img);
+          }
+
+          if (square === selected) {
+            squareEl.classList.add('highlight');
+          }
+
+          if (legalMoves.includes(square)) {
+            squareEl.classList.add('move-indicator');
+          }
+
+          squareEl.addEventListener('click', onSquareClick);
+          board.appendChild(squareEl);
+        }
+      }
+      turnInfo.textContent = `Turn: ${game.turn() === 'w' ? 'White' : 'Black'}`;
+    }
+
+    function vibrateFail() {
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+    }
+
+    function onSquareClick(e) {
+      const square = e.currentTarget.dataset.square;
+      const piece = game.get(square);
+
+      if (!selected) {
+        if (piece && piece.color === game.turn()) {
+          selected = square;
+          legalMoves = game.moves({ square, verbose: true }).map(m => m.to);
+        }
+      } else {
+        const possibleMoves = game.moves({ square: selected, verbose: true });
+        const moveAttempt = possibleMoves.find(m => m.to === square);
+        if (moveAttempt) {
+          game.move({ from: selected, to: square });
+        } else {
+          vibrateFail();
+        }
+        selected = null;
+        legalMoves = [];
+      }
+      renderBoard();
+    }
+
+    renderBoard();
+  </script>
 </body>
 </html>
